@@ -45,7 +45,7 @@ sys.register(new Need({
         // To access the result of a previously satisfied need you should
         // call inputs['NeedName']
         console.log('user has experience?' + inputs['experience']);
-        console.log('user's favorite thing?' + inputs['fave']);
+        console.log('user\'s favorite thing?' + inputs['fave']);
         this.done();
     }
 }));
