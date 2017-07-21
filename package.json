@@ -1,0 +1,20 @@
+{
+  "name": "telegram-needy",
+  "version": "0.1.0",
+  "description": "A needjs based telegram bot api",
+  "main": "index.js",
+  "scripts": {
+  },
+  "author": "Sajjad Heydari <mcshemail@gmail.com>, gosaya co",
+  "homepage": "https://github.com/gosaya-com/telegram_needy",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gosaya-com/telegram_needy.git"
+  },
+  "dependencies": {
+    "needjs": "^0.4.4",
+    "needmanager": "^0.1.2",
+    "node-telegram-bot-api": "^0.27.1"
+  }
+}
