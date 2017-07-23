@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "needjs": "^0.4.4",
-    "needmanager": "^0.1.3",
+    "needmanager": "^0.1.5",
     "node-telegram-bot-api": "^0.27.1"
   }
 }
