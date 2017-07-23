@@ -163,5 +163,5 @@ var tgneedy = function(options){
 
 tgneedy.prototype = needmanager.prototype;
 
-
+tgneedy.Store = needmanager.Store;
 module.exports = tgneedy;
