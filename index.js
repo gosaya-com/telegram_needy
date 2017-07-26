@@ -40,7 +40,7 @@ var tgneedy = function(options){
         var _post = config.post;
         this.post = function(inputs){
             var opts = this.options;
-            opts.bot.sendMessage(inputs[opts.sid], config.text);
+            opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
             if(_post)
                 _post.cal(this, inputs);
             else
