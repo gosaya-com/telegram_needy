@@ -81,7 +81,7 @@ var tgneedy = function(options){
         this.pre = function(inputs){
             this.sys.forget('_input#text');
             var opts = this.options;
-            opts.bot.sendMessage(inputs[opts.sid], config.text);
+            opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
             if(_pre){
                 _pre.call(this, inputs);
             } else {
