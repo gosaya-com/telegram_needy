@@ -12,8 +12,8 @@
     "url": "https://github.com/gosaya-com/telegram_needy.git"
   },
   "dependencies": {
-    "needjs": "^0.4.5",
-    "needmanager": "^0.1.6",
-    "node-telegram-bot-api": "^0.27.1"
+    "needjs": "^0.4.11",
+    "needmanager": "^0.1.9",
+    "node-telegram-bot-api": "^0.28.0"
   }
 }

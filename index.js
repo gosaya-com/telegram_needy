@@ -114,46 +114,105 @@ var tgneedy = function(options){
             this[i] = config[i];
 
         this.req = config.req || [];
-        this.req.push('_input#text');
         
         var _pre = config.pre;
-        this.pre = function(inputs){
-            this.sys.forget('_input#text');
-            var opts = this.options;
-            var keyboard = [];
-            for (var i in config.options){
-                // TODO make 2 optional?
-                if (i % 2 == 0){
-                    keyboard.push([{text: config.options[i]}]);
+        var _post = config._post;
+        if(config.options instanceof Function){
+            this.req.unshift('_choice#'+config.name);
+            this.req.unshift('_input#text');
+            this.pre = function(inputs){
+                this.sys.register(new Need({
+                    name: '_choice#'+config.name,
+                    post: function(inputs){
+                        var self = this;
+                        self._done = self.done;
+                        self.done = function(data){
+                            var opts = self.options;
+                            var keyboard = [];
+                            for (var i in data){
+                                // TODO make 2 optional?
+                                if (i % 2 == 0){
+                                    keyboard.push([{text: data[i]}]);
+                                } else {
+                                    keyboard[keyboard.length - 1].push({text: data[i]});
+                                }
+                            }
+                            opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {
+                                keyboard: keyboard
+                            }});
+                            // TODO
+                            self._done(data);
+                        }
+                        config.options.call(self, inputs);
+                        // TODO
+                    }
+                }));
+                this.sys.forget('_input#text');
+                this.sys.forget('_choice#'+config.name);
+                if(_pre){
+                    _pre.call(this, inputs);
                 } else {
-                    keyboard[keyboard.length - 1].push({text: config.options[i]});
+                    this.ok();
                 }
             }
-            opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {
-                keyboard: keyboard
-            }});
-            if(_pre){
-                _pre.call(this, inputs);
-            } else {
-                this.ok();
+
+            this.post = function(inputs){
+                var ans = inputs['_input#text'];
+                var configoptions = inputs['_choice#'+config.name];
+                this.sys.forget('_choice#'+config.name);
+                this.sys.forget('_input#text');
+
+                if (configoptions.indexOf(ans) === -1){
+                    // TODO a better option?
+                    this.sys.triggers[config.name].pre_done = false;
+                    return this.ok();
+                }
+
+                if(_post){
+                    _post.call(this, inputs, ans);
+                } else {
+                    this.done(ans);
+                }
             }
-        }
-
-        var _post = config._post;
-        this.post = function(inputs){
-            var ans = inputs['_input#text'];
-            this.sys.forget('_input#text');
-
-            if (config.options.indexOf(ans) === -1){
-                // TODO a better option?
-                this.sys.triggers[config.name].pre_done = false;
-                return this.ok();
+        } else {
+            this.req.unshift('_input#text');
+            this.pre = function(inputs){
+                this.sys.forget('_input#text');
+                var opts = this.options;
+                var keyboard = [];
+                for (var i in config.options){
+                    // TODO make 2 optional?
+                    if (i % 2 == 0){
+                        keyboard.push([{text: config.options[i]}]);
+                    } else {
+                        keyboard[keyboard.length - 1].push({text: config.options[i]});
+                    }
+                }
+                opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {
+                    keyboard: keyboard
+                }});
+                if(_pre){
+                    _pre.call(this, inputs);
+                } else {
+                    this.ok();
+                }
             }
 
-            if(_post){
-                _post.call(this, inputs, ans);
-            } else {
-                this.done(ans);
+            this.post = function(inputs){
+                var ans = inputs['_input#text'];
+                this.sys.forget('_input#text');
+
+                if (config.options.indexOf(ans) === -1){
+                    // TODO a better option?
+                    this.sys.triggers[config.name].pre_done = false;
+                    return this.ok();
+                }
+
+                if(_post){
+                    _post.call(this, inputs, ans);
+                } else {
+                    this.done(ans);
+                }
             }
         }
     }
