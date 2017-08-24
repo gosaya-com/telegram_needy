@@ -2,6 +2,7 @@ var needmanager = require('needmanager');
 var Bot = require('node-telegram-bot-api');
 
 var tgneedy = function(options){
+    var tself = this;
     var opts = options || {};
     this.opts = opts;
     if(!this.opts.sid)
@@ -120,33 +121,33 @@ var tgneedy = function(options){
         if(config.options instanceof Function){
             this.req.unshift('_choice#'+config.name);
             this.req.unshift('_input#text');
-            this.pre = function(inputs){
-                this.sys.register(new Need({
-                    name: '_choice#'+config.name,
-                    post: function(inputs){
-                        var self = this;
-                        self._done = self.done;
-                        self.done = function(data){
-                            var opts = self.options;
-                            var keyboard = [];
-                            for (var i in data){
-                                // TODO make 2 optional?
-                                if (i % 2 == 0){
-                                    keyboard.push([{text: data[i]}]);
-                                } else {
-                                    keyboard[keyboard.length - 1].push({text: data[i]});
-                                }
+            tself.register(new Need({
+                name: '_choice#'+config.name,
+                post: function(inputs){
+                    var self = this;
+                    self._done = self.done;
+                    self.done = function(data){
+                        var opts = self.options;
+                        var keyboard = [];
+                        for (var i in data){
+                            // TODO make 2 optional?
+                            if (i % 2 == 0){
+                                keyboard.push([{text: data[i]}]);
+                            } else {
+                                keyboard[keyboard.length - 1].push({text: data[i]});
                             }
-                            opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {
-                                keyboard: keyboard
-                            }});
-                            // TODO
-                            self._done(data);
                         }
-                        config.options.call(self, inputs);
+                        opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {
+                            keyboard: keyboard
+                        }});
                         // TODO
+                        self._done(data);
                     }
-                }));
+                    config.options.call(self, inputs);
+                    // TODO
+                }
+            }));
+            this.pre = function(inputs){
                 this.sys.forget('_input#text');
                 this.sys.forget('_choice#'+config.name);
                 if(_pre){
