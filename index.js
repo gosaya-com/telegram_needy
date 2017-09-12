@@ -43,7 +43,7 @@ var tgneedy = function(options){
             var opts = this.options;
             opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
             if(_post)
-                _post.cal(this, inputs);
+                _post.call(this, inputs);
             else
                 this.done();
         }
