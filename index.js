@@ -66,6 +66,27 @@ var tgneedy = function(options){
         ]
     }))
 
+    var SendPhoto = function(config){
+        if(!config.name)
+            throw "ERR: No name was assigned";
+        if(!config.photo)
+            throw "ERR: No photo was assigned";
+        for(var i in config)
+            this[i] = config[i];
+
+        var _post = config.post;
+        this.post = function(inputs){
+            var opts = this.options;
+            opts.bot.sendPhoto(inputs[opts.sid], config.photo,{caption: config.caption ,reply_markup: {hide_keyboard: true}});
+            if(_post)
+                _post.call(this, inputs);
+            else
+                this.done();
+        }
+    }
+
+    Need.SendPhoto = SendPhoto;
+
     var Ask = function(config){
         if(!config.name)
             throw "ERR: No name was assigned";
@@ -102,7 +123,7 @@ var tgneedy = function(options){
         }
     }
     Need.Ask = Ask;
-    
+
     var Choose = function(config){
         if(!config.name)
             throw "ERR: No name was assigned";
@@ -115,7 +136,7 @@ var tgneedy = function(options){
             this[i] = config[i];
 
         this.req = config.req || [];
-        
+
         var _pre = config.pre;
         var _post = config._post;
         if(config.options instanceof Function){
