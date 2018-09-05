@@ -62,11 +62,25 @@ var tgneedy = function(options){
         var _post = config.post;
         this.post = function(inputs){
             var opts = this.options;
-            opts.bot.sendPhoto(inputs[opts.sid], config.photo,{caption: config.caption ,reply_markup: {hide_keyboard: true}});
-            if(_post)
-                _post.call(this, inputs);
-            else
-                this.done();
+            if(typeof config.photo == 'function'){
+              var self = this;
+              self._done = self.done;
+              self.done = function(photo){
+                opts.bot.sendPhoto(inputs[opts.sid], photo,{caption: config.caption ,reply_markup: {hide_keyboard: true}});
+                this.done = this._done;
+                if(_post)
+                    _post.call(this, inputs);
+                else
+                    this.done();
+              };
+              config.photo.call(self, inputs);
+            } else {
+              opts.bot.sendPhoto(inputs[opts.sid], config.photo,{caption: config.caption ,reply_markup: {hide_keyboard: true}});
+              if(_post)
+                  _post.call(this, inputs);
+              else
+                  this.done();
+            }
         }
     }
 
