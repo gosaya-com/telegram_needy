@@ -25,7 +25,7 @@ var tgneedy = function(options){
         } else if(typeof eventData.user !== 'undefined'){
             self.invoke(eventData.user.id, eventName, eventData);
         }
-        oldEmit.call(self.bot, eventName, eventData); 
+        oldEmit.call(self.bot, eventName, eventData);
     }
 
     var Need = this.Need;
@@ -51,21 +51,6 @@ var tgneedy = function(options){
 
     Need.Send = Send;
 
-    this.register(new Need({
-        name: "_input#text",
-        post: function(inputs){
-            this.wait();
-        },
-        invokers: [
-            {
-                event: "text",
-                callback: function(inputs, data){
-                    this.done(data.text);
-                }
-            }
-        ]
-    }))
-
     var SendPhoto = function(config){
         if(!config.name)
             throw "ERR: No name was assigned";
@@ -86,6 +71,21 @@ var tgneedy = function(options){
     }
 
     Need.SendPhoto = SendPhoto;
+
+    this.register(new Need({
+        name: "_input#text",
+        post: function(inputs){
+            this.wait();
+        },
+        invokers: [
+            {
+                event: "text",
+                callback: function(inputs, data){
+                    this.done(data.text);
+                }
+            }
+        ]
+    }))
 
     var Ask = function(config){
         if(!config.name)
@@ -138,7 +138,7 @@ var tgneedy = function(options){
         this.req = config.req || [];
 
         var _pre = config.pre;
-        var _post = config._post;
+        var _post = config.post;
         if(config.options instanceof Function){
             this.req.unshift('_choice#'+config.name);
             this.req.unshift('_input#text');
