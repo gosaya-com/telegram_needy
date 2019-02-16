@@ -1,6 +1,47 @@
 var needmanager = require('needmanager');
 var Bot = require('node-telegram-bot-api');
 
+const call_or_conf = function(need, param, sys){
+  if(typeof need[param] == 'function'){
+    // TODO this could be problematic, use a different method like Choose
+    need.req = need.req || [];
+    const paramneedname = '_'+param+'#'+need.name;
+    need.req.unshift(paramneedname);
+    
+    sys.register(new sys.Need({
+      name: paramneedname,
+      post:function(inputs){
+        need[param].call(this, inputs);
+      }
+    }));
+
+    let _pre = need.pre;
+    need.pre = function(inputs){
+      this.sys.forget(paramneedname);
+      if(_pre)
+        _pre.call(this, inputs);
+      else
+        this.ok();
+    };
+
+    let _post = need.post;
+    need.post = function(inputs, payload){
+      payload = payload || {};
+      payload[param] = inputs[paramneedname];
+      this.sys.forget(paramneedname); // This ensures there is no redundancy
+      _post.call(this, inputs, payload);
+    }
+
+  } else {
+    let _post = need.post;
+    need.post = function(inputs, payload){
+      payload = payload || {};
+      payload[param] = need[param];
+      _post.call(this, inputs, payload);
+    }
+  }
+}
+
 var tgneedy = function(options){
   var tself = this;
   var opts = options || {};
@@ -39,28 +80,15 @@ var tgneedy = function(options){
       this[i] = config[i];
 
     var _post = config.post;
-    this.post = function(inputs){
+    this.post = function(inputs, payload){
       var opts = this.options;
-      if(typeof config.text == 'function'){
-        let self = this;
-        self._done = self.done;
-        self.done = function(text){
-          opts.bot.sendMessage(inputs[opts.sid], text, {reply_markup: {hide_keyboard: true}});
-          this.done = this._done;
-          if(_post)
-            _post.call(this, inputs);
-          else
-            this.done();
-        }
-        config.text.call(self, inputs);
-      } else {
-        opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
-        if(_post)
-          _post.call(this, inputs);
-        else
-          this.done();
-      }
+      opts.bot.sendMessage(inputs[opts.sid], payload.text, {reply_markup: {hide_keyboard: true}});
+      if(_post)
+        _post.call(this, inputs);
+      else
+        this.done();
     }
+    call_or_conf(this, 'text', tself);
   }
 
   Need.Send = Send;
@@ -74,28 +102,16 @@ var tgneedy = function(options){
       this[i] = config[i];
 
     var _post = config.post;
-    this.post = function(inputs){
+    this.post = function(inputs, payload){
       var opts = this.options;
-      if(typeof config.photo == 'function'){
-        var self = this;
-        self._done = self.done;
-        self.done = function(photo){
-          opts.bot.sendPhoto(inputs[opts.sid], photo,{caption: config.caption ,reply_markup: {hide_keyboard: true}});
-          this.done = this._done;
-          if(_post)
-            _post.call(this, inputs);
-          else
-            this.done();
-        };
-        config.photo.call(self, inputs);
-      } else {
-        opts.bot.sendPhoto(inputs[opts.sid], config.photo,{caption: config.caption ,reply_markup: {hide_keyboard: true}});
-        if(_post)
-          _post.call(this, inputs);
-        else
-          this.done();
-      }
+      opts.bot.sendPhoto(inputs[opts.sid], payload.photo,{caption: payload.caption ,reply_markup: {hide_keyboard: true}});
+      if(_post)
+        _post.call(this, inputs);
+      else
+        this.done();
     }
+    call_or_conf(this, 'caption', tself);
+    call_or_conf(this, 'photo', tself);
   }
 
   Need.SendPhoto = SendPhoto;
@@ -125,30 +141,29 @@ var tgneedy = function(options){
       this[i] = config[i];
 
     this.req = config.req || [];
-    this.req.push('_input#text');
+    let sendneed = new Need({
+      name: '_send#'+config.name,
+      post: function(inputs, payload){
+        var opts = this.options;
+        opts.bot.sendMessage(inputs[opts.sid], payload.text, {reply_markup: {hide_keyboard: true}});
+        this.done();
+      }
+    });
+    sendneed.text = config.text;
+    call_or_conf(sendneed, 'text', tself);
+    tself.register(sendneed);
+
+    this.req.unshift('_send#'+config.name);
+    this.req.unshift('_input#text');
 
     var _pre = config.pre;
     this.pre = function(inputs){
       this.sys.forget('_input#text');
-      var opts = this.options;
-      if(typeof config.text == 'function'){
-        var self = this;
-        self._done = self.done;
-        self.done = function(text){
-          opts.bot.sendMessage(inputs[opts.sid], text, {reply_markup: {hide_keyboard: true}});
-          if(_pre){
-            _pre.call(this, inputs);
-          } else {
-            this.ok();
-          }
-        }
+      this.sys.forget('_send#'+config.name);
+      if(_pre){
+        _pre.call(this, inputs);
       } else {
-        opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
-        if(_pre){
-          _pre.call(this, inputs);
-        } else {
-          this.ok();
-        }
+        this.ok();
       }
     }
 
@@ -156,6 +171,7 @@ var tgneedy = function(options){
     this.post = function(inputs){
       var ans = inputs['_input#text'];
       this.sys.forget('_input#text');
+      this.sys.forget('_send#'+config.name);
       if(_post){
         _post.call(this, inputs, ans);
       } else {
@@ -180,107 +196,143 @@ var tgneedy = function(options){
 
     var _pre = config.pre;
     var _post = config.post;
-    if(config.options instanceof Function){
-      this.req.unshift('_choice#'+config.name);
-      this.req.unshift('_input#text');
-      tself.register(new Need({
-        name: '_choice#'+config.name,
-        post: function(inputs){
-          var self = this;
-          self._done = self.done;
-          self.done = function(data){
-            var opts = self.options;
-            var keyboard = [];
-            for (var i in data){
-              // TODO make 2 optional?
-              if (i % 2 == 0){
-                keyboard.push([{text: data[i]}]);
-              } else {
-                keyboard[keyboard.length - 1].push({text: data[i]});
-              }
-            }
-            opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {
-              keyboard: keyboard
-            }});
-            // TODO
-            self._done(data);
-          }
-          config.options.call(self, inputs);
-          // TODO
-        }
-      }));
-      this.pre = function(inputs){
-        this.sys.forget('_input#text');
-        this.sys.forget('_choice#'+config.name);
-        if(_pre){
-          _pre.call(this, inputs);
-        } else {
-          this.ok();
-        }
-      }
 
-      this.post = function(inputs){
-        var ans = inputs['_input#text'];
-        var configoptions = inputs['_choice#'+config.name];
-        this.sys.forget('_choice#'+config.name);
-        this.sys.forget('_input#text');
-
-        if (configoptions.indexOf(ans) === -1){
-          // TODO a better option?
-          this.sys.triggers[config.name].pre_done = false;
-          return this.ok();
-        }
-
-        if(_post){
-          _post.call(this, inputs, ans);
-        } else {
-          this.done(ans);
-        }
-      }
-    } else {
-      this.req.unshift('_input#text');
-      this.pre = function(inputs){
-        this.sys.forget('_input#text');
+    let sendneed = new Need({
+      name: '_send#'+config.name,
+      post: function(inputs, payload){
         var opts = this.options;
-        var keyboard = [];
-        for (var i in config.options){
-          // TODO make 2 optional?
-          if (i % 2 == 0){
-            keyboard.push([{text: config.options[i]}]);
+        let keyboard = [];
+        let data = payload.options;
+        for(let i in data){
+          if(i%2 ==0){
+            keyboard.push([{text: data[i]}])
           } else {
-            keyboard[keyboard.length - 1].push({text: config.options[i]});
+            keyboard[keyboard.length - 1].push({text: data[i]});
           }
         }
-        opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {
-          keyboard: keyboard
-        }});
-        if(_pre){
-          _pre.call(this, inputs);
-        } else {
-          this.ok();
-        }
+        opts.bot.sendMessage(inputs[opts.sid], payload.text, {reply_markup: { keyboard: keyboard }});
+        this.sys.inform('_options#'+config.name, data);
+        this.done();
+      }
+    });
+    sendneed.text = config.text;
+    sendneed.options = config.options;
+    call_or_conf(sendneed, 'text', tself);
+    call_or_conf(sendneed, 'options', tself);
+    tself.register(sendneed);
+
+    this.req.unshift('_send#'+config.name);
+    this.req.unshift('_input#text');
+
+    this.pre = function(inputs){
+      this.sys.forget('_input#text');
+      this.sys.forget('_send#'+config.name);
+      if(_pre){
+        _pre.call(this, inputs);
+      } else {
+        this.ok();
+      }
+    }
+
+    this.post = function(inputs){
+      var ans = inputs['_input#text'];
+      var configoptions = inputs['_options#'+config.name];
+      this.sys.forget('_send#'+config.name);
+      this.sys.forget('_input#text');
+
+      if (configoptions.indexOf(ans) === -1){
+        // TODO a better option?
+        this.sys.triggers[config.name].pre_done = false;
+        return this.ok();
       }
 
-      this.post = function(inputs){
-        var ans = inputs['_input#text'];
-        this.sys.forget('_input#text');
-
-        if (config.options.indexOf(ans) === -1){
-          // TODO a better option?
-          this.sys.triggers[config.name].pre_done = false;
-          return this.ok();
-        }
-
-        if(_post){
-          _post.call(this, inputs, ans);
-        } else {
-          this.done(ans);
-        }
+      if(_post){
+        _post.call(this, inputs, ans);
+      } else {
+        this.done(ans);
       }
     }
   }
 
   Need.Choose = Choose;
+
+  var Path = function(config){
+    if(!config.name)
+      throw "ERR: No name was assigned";
+    if(!config.text)
+      throw "ERR: No text was assigned";
+    if(!config.options)
+      throw "ERR: No options was assigned";
+
+    for(var i in config)
+      this[i] = config[i];
+
+    this.req = config.req || [];
+
+    var _pre = config.pre;
+    var _post = config.post;
+
+    let sendneed = new Need({
+      name: '_send#'+config.name,
+      post: function(inputs, payload){
+        var opts = this.options;
+        let keyboard = [];
+        let data = payload.options;
+        let counter = 0;
+        for(let i in data){
+          if(counter%2 ==0){
+            keyboard.push([{text: i}])
+          } else {
+            keyboard[keyboard.length - 1].push({text: i});
+          }
+          counter ++;
+        }
+        opts.bot.sendMessage(inputs[opts.sid], payload.text, {reply_markup: { keyboard: keyboard }});
+        this.sys.inform('_options#'+config.name, data);
+        this.done();
+      }
+    });
+    sendneed.text = config.text;
+    sendneed.options = config.options;
+    call_or_conf(sendneed, 'text', tself);
+    call_or_conf(sendneed, 'options', tself);
+    tself.register(sendneed);
+
+    this.req.unshift('_send#'+config.name);
+    this.req.unshift('_input#text');
+
+    this.pre = function(inputs){
+      this.sys.forget('_input#text');
+      this.sys.forget('_send#'+config.name);
+      if(_pre){
+        _pre.call(this, inputs);
+      } else {
+        this.ok();
+      }
+    }
+
+    this.post = function(inputs){
+      var ans = inputs['_input#text'];
+      var configoptions = inputs['_options#'+config.name];
+      this.sys.forget('_send#'+config.name);
+      this.sys.forget('_input#text');
+
+      if (Object.keys(configoptions).indexOf(ans) === -1){
+        // TODO a better option?
+        this.sys.triggers[config.name].pre_done = false;
+        return this.ok();
+      }
+
+      if(_post){
+        _post.call(this, inputs, ans);
+        this.sys.trigger(configoptions[ans]);
+      } else {
+        this.done(ans);
+        this.sys.trigger(configoptions[ans]);
+      }
+    }
+  }
+  Need.Path = Path;
 }
 
 tgneedy.prototype = needmanager.prototype;
