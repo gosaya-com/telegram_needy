@@ -1,6 +1,6 @@
 {
   "name": "telegram-needy",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A needjs based telegram bot api",
   "main": "index.js",
   "scripts": {},
