@@ -29,25 +29,39 @@ var tgneedy = function(options){
     }
 
     var Need = this.Need;
-    var Send = function(config){
-        if(!config.name)
-            throw "ERR: No name was assigned";
-        if(!config.text)
-            throw "ERR: No text was assigned";
+  var Send = function(config){
+    if(!config.name)
+      throw "ERR: No name was assigned";
+    if(!config.text)
+      throw "ERR: No text was assigned";
 
-        for(var i in config)
-            this[i] = config[i];
+    for(var i in config)
+      this[i] = config[i];
 
-        var _post = config.post;
-        this.post = function(inputs){
-            var opts = this.options;
-            opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
-            if(_post)
-                _post.call(this, inputs);
-            else
-                this.done();
+    var _post = config.post;
+    this.post = function(inputs){
+      var opts = this.options;
+      if(typeof config.text == 'function'){
+        let self = this;
+        self._done = self.done;
+        self.done = function(text){
+          opts.bot.sendMessage(inputs[opts.sid], text, {reply_markup: {hide_keyboard: true}});
+          this.done = this._done;
+          if(_post)
+            _post.call(this, inputs);
+          else
+            this.done();
         }
+        config.text.call(self, inputs);
+      } else {
+        opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
+        if(_post)
+          _post.call(this, inputs);
+        else
+          this.done();
+      }
     }
+  }
 
     Need.Send = Send;
 
