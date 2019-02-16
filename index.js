@@ -131,11 +131,24 @@ var tgneedy = function(options){
     this.pre = function(inputs){
       this.sys.forget('_input#text');
       var opts = this.options;
-      opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
-      if(_pre){
-        _pre.call(this, inputs);
+      if(typeof config.text == 'function'){
+        var self = this;
+        self._done = self.done;
+        self.done = function(text){
+          opts.bot.sendMessage(inputs[opts.sid], text, {reply_markup: {hide_keyboard: true}});
+          if(_pre){
+            _pre.call(this, inputs);
+          } else {
+            this.ok();
+          }
+        }
       } else {
-        this.ok();
+        opts.bot.sendMessage(inputs[opts.sid], config.text, {reply_markup: {hide_keyboard: true}});
+        if(_pre){
+          _pre.call(this, inputs);
+        } else {
+          this.ok();
+        }
       }
     }
 
