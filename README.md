@@ -1,6 +1,8 @@
 # Telegram Needy
 ---
 
+Telegram needy's maintenance is currently halted. We will monitor issues and pull requests, but there won't be any active development until further notice.
+
 Telegram needy is an extention to [node-telegram-bot-api](https://github.com/yagop/node-telegram-bot-api) and [needjs](https://github.com/gosaya-com/needjs) which will give you the benefits of needs inside your telegram bots.
 
 ## Install
